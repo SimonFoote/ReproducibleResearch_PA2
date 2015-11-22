@@ -1,0 +1,98 @@
+---
+title: "US Storm Analysis"
+output: html_document
+author: "Simon Foote"
+---
+
+#Synopsis
+In this report, we will use data from the NOAA Storm Database, to answer the folowing questions:
+
+1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+2. Across the United States, which types of events have the greatest economic consequences?
+
+From these data, we found that the Event Type of **Tornado**, was the most harmful to population health in the US and that the Event Type of **Flood** had the greatest economic consequences in the US.
+
+#Data Processing
+
+##Download Data file from Coursera
+```{r}
+URL <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+filename <- "repdata-data-StormData.csv.bz2"
+if(!file.exists(filename))
+{
+    download.file(URL, filename)
+}
+```
+
+##Unzip and read in Data from csv file
+```{r}
+data <- read.csv(bzfile("repdata-data-StormData.csv.bz2"))
+```
+After reading in the data, we can see there are **902,297** observations and **37** variables.
+```{r}
+dim(data)
+```
+
+##Data Preparation
+We will subset the data required for the analysis and then calculate the values of Damage for both Property and Crops
+```{r}
+subsetData <- data[,c('EVTYPE','FATALITIES','INJURIES', 'PROPDMG', 'PROPDMGEXP', 'CROPDMG', 'CROPDMGEXP')]
+
+# Convert H, K, M, B units to calculate Property Damage 
+subsetData$PROPDMGVAL <- 0
+subsetData[subsetData$PROPDMGEXP == "H", ]$PROPDMGVAL <- subsetData[subsetData$PROPDMGEXP == "H", ]$PROPDMG * 10^2
+subsetData[subsetData$PROPDMGEXP == "K", ]$PROPDMGVAL <- subsetData[subsetData$PROPDMGEXP == "K", ]$PROPDMG * 10^3
+subsetData[subsetData$PROPDMGEXP == "M", ]$PROPDMGVAL <- subsetData[subsetData$PROPDMGEXP == "M", ]$PROPDMG * 10^6
+subsetData[subsetData$PROPDMGEXP == "B", ]$PROPDMGVAL <- subsetData[subsetData$PROPDMGEXP == "B", ]$PROPDMG * 10^9
+
+# Convert H, K, M, B units to calculate Crop Damage
+subsetData$CROPDMGVAL <- 0
+subsetData[subsetData$CROPDMGEXP == "H", ]$CROPDMGVAL <- subsetData[subsetData$CROPDMGEXP == "H", ]$CROPDMG * 10^2
+subsetData[subsetData$CROPDMGEXP == "K", ]$CROPDMGVAL <- subsetData[subsetData$CROPDMGEXP == "K", ]$CROPDMG * 10^3
+subsetData[subsetData$CROPDMGEXP == "M", ]$CROPDMGVAL <- subsetData[subsetData$CROPDMGEXP == "M", ]$CROPDMG * 10^6
+subsetData[subsetData$CROPDMGEXP == "B", ]$CROPDMGVAL <- subsetData[subsetData$CROPDMGEXP == "B", ]$CROPDMG * 10^9
+```
+
+#Results
+##Question 1
+To answer the Question:
+**Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?**
+
+We will first aggregate the Fatalites by Event Type and plot the Top 10 counts by Event Type.
+
+```{r}
+fatalities <- aggregate(FATALITIES ~ EVTYPE, data=subsetData, sum)
+fatalities <- fatalities[order(-fatalities$FATALITIES), ][1:10, ]
+
+barplot(fatalities$FATALITIES, names = fatalities$EVTYPE, ylab="Fatalities", main="Total No. of Fatalities by Top 10 Event Types", las=2, cex.axis=0.5, cex.names=0.5)
+```
+
+Then we will aggregate the Injuries by Event type and plot the Top 10 counts by Event Type.
+
+```{r}
+injuries <- aggregate(INJURIES ~ EVTYPE, data=subsetData, sum)
+injuries <- injuries[order(-injuries$INJURIES), ][1:10, ]
+
+barplot(injuries$INJURIES, names = injuries$EVTYPE, ylab="Injuries", main="Total No. of Injuries by Top 10 Event Types", las=2, cex.axis=0.5, cex.names=0.5)
+```
+
+###Conclusion
+It is clear in the plots above, in both cases of Fatalities and Injuries, that **Tornado** type Events are the most harmful to population health in the US.
+
+##Question 2
+To answer the Question:
+**Across the United States, which types of events have the greatest economic consequences?**
+
+We will agregate Value of damage for both Property and Crops, by Event type and plot the results for the Top 10 Events.
+
+```{r}
+damages <- aggregate(PROPDMGVAL + CROPDMGVAL ~ EVTYPE, data=subsetData, sum)
+names(damages) = c("EVTYPE", "TOTALDAMAGE")
+damages <- damages[order(-damages$TOTALDAMAGE), ][1:10, ]
+
+barplot(damages$TOTALDAMAGE, names = damages$EVTYPE, ylab="Cost of Damage", main="Total Cost of Damage by Top 10 Event Types", las=2, cex.axis=0.5, cex.names=0.5)
+```
+
+###Conclusion
+The above plot shows that the Event of **Flood**, has the greatest economic consequences in the US.
